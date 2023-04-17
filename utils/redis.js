@@ -14,8 +14,8 @@ class RedisClient {
   }
 
   async get(key) {
-    this.getAsync = util.promisify(this.client.get).bind(this.client);
-    const reply = await this.getAsync(key);
+    const getAsync = util.promisify(this.client.get).bind(this.client);
+    const reply = await getAsync(key);
     return reply;
   }
 
