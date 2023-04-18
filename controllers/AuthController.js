@@ -5,10 +5,10 @@ import redisClient from '../utils/redis';
 
 export default class AuthController {
   static async getConnect(request, response) {
-    const auth = request.headers.get('Authorization');
+    const auth = request.headers.authorization;
     const extractAuth = auth.split('Basic ')[1];
     const decodeAuth = Buffer.from(extractAuth, 'base64').toString('utf-8');
-    const extractUser = decodeAuth.split(':', 1);
+    const extractUser = decodeAuth.split(':');
     const user = { email: extractUser[0], password: sha1(extractUser[1]) };
 
     const getUser = await dbClient.db.collection('users').findOne(user);
@@ -16,13 +16,13 @@ export default class AuthController {
       response.status(401).send({ error: 'Unauthorized' });
     } else {
       const token = uuidv4();
-      await redisClient.set(`auth_${token}`, getUser.id, 24 * 60 * 60);
+      await redisClient.set(`auth_${token}`, getUser._id.toString(), 24 * 60 * 60);
       response.status(200).send({ token });
     }
   }
 
   static async getDisconnect(request, response) {
-    const xToken = request.headers.get('X-Token');
+    const xToken = request.headers['x-token'];
     const userId = await redisClient.get(`auth_${xToken}`);
     if (!userId) response.status(401).send({ error: 'Unauthorized' });
     else {
