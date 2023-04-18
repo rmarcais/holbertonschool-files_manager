@@ -1,0 +1,78 @@
+import fs from 'fs';
+import { ObjectId } from 'mongodb';
+import { v4 as uuidv4 } from 'uuid';
+import dbClient from '../utils/db';
+import redisClient from '../utils/redis';
+
+export default class FilesController {
+  static async postUpload(request, response) {
+    const xToken = request.headers['x-token'];
+    const userId = await redisClient.get(`auth_${xToken}`);
+    if (!userId) return response.status(401).send({ error: 'Unauthorized' });
+    const user = await dbClient.db.collection('users').findOne({ _id: ObjectId(userId) });
+    if (!user) return response.status(401).send({ error: 'Unauthorized' });
+
+    const {
+      name, type, parentId, isPublic, data,
+    } = request.body;
+    const validTypes = ['folder', 'file', 'image'];
+    if (!name) return response.status(400).send({ error: 'Missing name' });
+    if (!type || !validTypes.includes(type)) return response.status(400).send({ error: 'Missing type' });
+    if (!data && type !== 'folder') return response.status(400).send({ error: 'Missing data' });
+    if (parentId) {
+      if (!await dbClient.db.collection('files').findOne({ _id: ObjectId(parentId) })) return response.status(400).send({ error: 'Parent not found' });
+      if (!await dbClient.db.collection('files').findOne({ _id: ObjectId(parentId), type: 'folder' })) return response.status(400).send({ error: 'Parent is not a folder' });
+    }
+    if (type === 'folder') {
+      const document = {
+        userId,
+        name,
+        type,
+        isPublic: !!isPublic,
+        parentId: 0,
+      };
+      const result = await dbClient.db.collection('files').insertOne(document);
+      response.status(201).send({
+        id: result.insertedId,
+        userId,
+        name,
+        type,
+        isPublic: !!isPublic,
+        parentId: 0,
+      });
+    } else {
+      let localPath = process.env.FOLDER_PATH || '/tmp/files_manager/';
+      const filename = uuidv4();
+      const clearData = Buffer.from(data, 'base64').toString('utf-8');
+      try {
+        if (!fs.existsSync(localPath)) {
+          fs.mkdirSync(localPath);
+        }
+        localPath += filename;
+        fs.appendFile(localPath, clearData, (err) => {
+          if (err) throw err;
+        });
+      } catch (error) {
+        console.log(error);
+      }
+      const document = {
+        userId,
+        name,
+        type,
+        isPublic: !!isPublic,
+        parentId: parentId || 0,
+        localPath,
+      };
+      const result = await dbClient.db.collection('files').insertOne(document);
+      response.status(201).send({
+        id: result.insertedId,
+        userId,
+        name,
+        type,
+        isPublic: !!isPublic,
+        parentId: parentId || 0,
+      });
+    }
+    return response.send();
+  }
+}
