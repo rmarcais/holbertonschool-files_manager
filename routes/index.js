@@ -18,4 +18,7 @@ router.use(express.json());
 router.post('/users', UserController.postNew);
 router.post('/files', FilesController.postUpload);
 
+router.put('/files/:id/publish', FilesController.putPublish);
+router.put('/files/:id/unpublish', FilesController.putUnPublish);
+
 export default router;
