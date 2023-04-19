@@ -139,7 +139,7 @@ export default class FilesController {
       userId,
       name: file.name,
       type: file.type,
-      isPublic: file.isPublic,
+      isPublic: true,
       parentId: file.parentId,
     });
   }
@@ -166,7 +166,7 @@ export default class FilesController {
       userId,
       name: file.name,
       type: file.type,
-      isPublic: file.isPublic,
+      isPublic: false,
       parentId: file.parentId,
     });
   }
