@@ -153,7 +153,16 @@ export default class FilesController {
       { $limit: limit },
     ]).toArray();
 
-    return response.status(200).send(filesList);
+    const resultList = filesList.map((file) => ({
+      id: file._id.toString(),
+      userId: user._id.toString(),
+      name: file.name,
+      type: file.type,
+      isPublic: file.isPublic,
+      parentId: file.parentId,
+    }));
+
+    return response.status(200).send(resultList);
   }
 
   static async putPublish(request, response) {
