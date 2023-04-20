@@ -1,5 +1,6 @@
 import fs from 'fs';
 import mime from 'mime-types';
+import Bull from 'bull';
 import { ObjectId } from 'mongodb';
 import { v4 as uuidv4 } from 'uuid';
 import dbClient from '../utils/db';
@@ -33,6 +34,8 @@ async function getUser(token) {
 
 export default class FilesController {
   static async postUpload(request, response) {
+    const fileQueue = new Bull('fileQueue');
+
     const xToken = request.headers[TOKEN];
     const user = await getUser(xToken);
     if (!user) return response.status(401).send({ error: UNAUTHORIZED });
@@ -98,8 +101,17 @@ export default class FilesController {
         localPath,
       };
       const result = await dbClient.db.collection(FILESCOLLECTION).insertOne(document);
+      const fileId = result.insertedId;
+
+      if (type === 'image') {
+        await fileQueue.add({
+          userId: user._id.toString(),
+          fileId,
+        });
+      }
+
       response.status(201).send({
-        id: result.insertedId,
+        id: fileId,
         userId: user._id.toString(),
         name,
         type,
@@ -238,8 +250,15 @@ export default class FilesController {
 
     const mimeType = mime.lookup(file.name);
     response.setHeader('Content-Type', mimeType);
-    const data = fs.readFileSync(file.localPath, 'utf8');
 
+    const { size } = request.query;
+    let path = file.localPath;
+    if (size) {
+      path += `_${size}`;
+      if (!fs.existsSync(path)) return response.status(404).send({ error: NOTFOUND });
+    }
+
+    const data = fs.readFileSync(path, 'utf8');
     return response.status(200).send(data);
   }
 }
