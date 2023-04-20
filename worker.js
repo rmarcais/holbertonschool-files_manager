@@ -1,5 +1,6 @@
 import Bull from 'bull';
 import fs from 'fs';
+import { ObjectId } from 'mongodb';
 import imageThumbnail from 'image-thumbnail';
 import dbClient from './utils/db';
 
@@ -11,18 +12,21 @@ fileQueue.process(async (job) => {
   if (!fileId) throw Error('Missing fileId');
   if (!userId) throw Error('Missing userId');
 
-  const file = await dbClient.db.collection('files').findOne({ fileId, userId });
+  const file = await dbClient.db.collection('files').findOne({ _id: ObjectId(fileId), userId });
   if (!file) throw Error('File not found');
 
-  const allWidth = [100, 250, 500];
   const path = file.localPath;
 
-  const thumbnail100 = await imageThumbnail(path, { width: allWidth[0] });
-  fs.writeFileSync(`${path}_${allWidth[0]}`, thumbnail100);
+  try {
+    const thumbnail = await imageThumbnail(path, { width: 100 });
+    fs.writeFileSync(`${path}_100`, thumbnail);
 
-  const thumbnail250 = await imageThumbnail(path, { width: allWidth[1] });
-  fs.writeFileSync(`${path}_${allWidth[1]}`, thumbnail250);
+    const thumbnail250 = await imageThumbnail(path, { width: 250 });
+    fs.writeFileSync(`${path}_250`, thumbnail250);
 
-  const thumbnail500 = await imageThumbnail(path, { width: allWidth[2] });
-  fs.writeFileSync(`${path}_${allWidth[2]}`, thumbnail500);
+    const thumbnail500 = await imageThumbnail(path, { width: 500 });
+    fs.writeFileSync(`${path}_500`, thumbnail500);
+  } catch (e) {
+    console.log(e);
+  }
 });

@@ -79,14 +79,14 @@ export default class FilesController {
     } else {
       let localPath = process.env.FOLDER_PATH || '/tmp/files_manager/';
       const filename = uuidv4();
-      const clearData = Buffer.from(data, 'base64').toString('utf-8');
+      const clearData = Buffer.from(data, 'base64');
       try {
         if (!fs.existsSync(localPath)) {
           fs.mkdirSync(localPath);
         }
         localPath += filename;
-        fs.appendFile(localPath, clearData, (err) => {
-          if (err) throw err;
+        fs.writeFile(localPath, clearData, (error) => {
+          if (error) console.log(error);
         });
       } catch (error) {
         console.log(error);
@@ -248,9 +248,6 @@ export default class FilesController {
 
     if (!fs.existsSync(file.localPath)) return response.status(404).send({ error: NOTFOUND });
 
-    const mimeType = mime.lookup(file.name);
-    response.setHeader('Content-Type', mimeType);
-
     const { size } = request.query;
     let path = file.localPath;
     if (size) {
@@ -258,7 +255,9 @@ export default class FilesController {
       if (!fs.existsSync(path)) return response.status(404).send({ error: NOTFOUND });
     }
 
-    const data = fs.readFileSync(path, 'utf8');
+    const mimeType = mime.lookup(file.name);
+    response.setHeader('Content-Type', mimeType);
+    const data = fs.readFileSync(path);
     return response.status(200).send(data);
   }
 }
