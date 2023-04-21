@@ -151,15 +151,21 @@ export default class FilesController {
 
     const parentId = request.query.parentId || 0;
     const page = request.query.page || 0;
+    let match;
+
+    if (parentId === 0) match = { userId: user._id.toString() };
+    else {
+      match = {
+        parentId: parentId === '0' ? Number(parentId) : parentId,
+        userId: user._id.toString(),
+      };
+    }
 
     const limit = 20;
     const skip = page * limit;
     const filesList = await dbClient.db.collection(FILESCOLLECTION).aggregate([
       {
-        $match: {
-          parentId: parentId === '0' ? Number(parentId) : parentId,
-          userId: user._id.toString(),
-        },
+        $match: match,
       },
       { $skip: skip },
       { $limit: limit },
