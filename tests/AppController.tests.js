@@ -6,6 +6,7 @@ import dbClient from '../utils/db';
 
 use(chaiHttp);
 const url = 'http://0.0.0.0:5000';
+
 describe('appController tests', () => {
   describe('[GET] /status route', () => {
     it('should return a status code 200', async () => {
