@@ -119,25 +119,26 @@ export default class FilesController {
   }
 
   static async getShow(request, response) {
-    const xToken = request.headers[TOKEN];
-    const user = await getUser(xToken);
-    if (!user) return response.status(401).send({ error: UNAUTHORIZED });
+    const token = request.headers['x-token'];
+    if (!token) { return response.status(401).json({ error: 'Unauthorized' }); }
+    const keyID = await redisClient.get(`auth_${token}`);
+    if (!keyID) { return response.status(401).json({ error: 'Unauthorized' }); }
+    const user = await dbClient.db.collection('users').findOne({ _id: ObjectId(keyID) });
+    if (!user) { return response.status(401).json({ error: 'Unauthorized' }); }
 
-    const fileId = request.params.id;
-    if (!fileId) return response.status(404).send({ error: NOTFOUND });
+    const idFile = request.params.id || '';
+    const fileDocument = await dbClient.db
+      .collection('files')
+      .findOne({ _id: ObjectId(idFile), userId: user._id });
+    if (!fileDocument) return response.status(404).send({ error: 'Not found' });
 
-    const query = { _id: ObjectId(fileId), userId: user._id };
-    const file = await dbClient.db.collection(FILESCOLLECTION).findOne(query);
-
-    if (!file) return response.status(404).send({ error: NOTFOUND });
-
-    return response.status(200).send({
-      id: file._id,
-      userId: user._id,
-      name: file.name,
-      type: file.type,
-      isPublic: file.isPublic,
-      parentId: file.parentId,
+    return response.send({
+      id: fileDocument._id,
+      userId: fileDocument.userId,
+      name: fileDocument.name,
+      type: fileDocument.type,
+      isPublic: fileDocument.isPublic,
+      parentId: fileDocument.parentId,
     });
   }
 
@@ -165,22 +166,18 @@ export default class FilesController {
       },
       { $skip: skip },
       { $limit: limit },
-    ]);
+    ]).toArray();
 
-    const filesArray = [];
-    await filesList.forEach((item) => {
-      const fileItem = {
-        id: item._id,
-        userId: item.userId,
-        name: item.name,
-        type: item.type,
-        isPublic: item.isPublic,
-        parentId: item.parentId,
-      };
-      filesArray.push(fileItem);
-    });
+    const resultList = filesList.map((file) => ({
+      id: file._id,
+      userId: file.userId,
+      name: file.name,
+      type: file.type,
+      isPublic: file.isPublic,
+      parentId: file.parentId,
+    }));
 
-    return response.status(200).send(filesArray);
+    return response.status(200).send(resultList);
   }
 
   static async putPublish(request, response) {
