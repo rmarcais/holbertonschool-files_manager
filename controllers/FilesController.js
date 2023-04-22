@@ -168,8 +168,8 @@ export default class FilesController {
     ]).toArray();
 
     const resultList = filesList.map((file) => ({
-      id: file._id.toString(),
-      userId: user._id.toString(),
+      id: file._id,
+      userId: file.userId,
       name: file.name,
       type: file.type,
       isPublic: file.isPublic,
