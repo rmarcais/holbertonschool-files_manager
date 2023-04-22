@@ -51,17 +51,18 @@ export default class FilesController {
     }
     if (!data && type !== FOLDER) return response.status(400).send({ error: MISSINGDATA });
     if (parentId) {
-      if (!await dbClient.db.collection(FILESCOLLECTION).findOne({ _id: ObjectId(parentId) })) {
+      const query = { _id: ObjectId(parentId) };
+      const parent = !await dbClient.db.collection(FILESCOLLECTION).findOne(query);
+      if (!parent) {
         return response.status(400).send({ error: PARENTNOTFOUND });
       }
-      const query = { _id: ObjectId(parentId), type: FOLDER };
-      if (!await dbClient.db.collection(FILESCOLLECTION).findOne(query)) {
+      if (parent.type !== FOLDER) {
         return response.status(400).send({ error: PARENTNOTFOLDER });
       }
     }
     if (type === FOLDER) {
       const document = {
-        userId: user._id.toString(),
+        userId: user._id,
         name,
         type,
         isPublic: !!isPublic,
@@ -70,7 +71,7 @@ export default class FilesController {
       const result = await dbClient.db.collection(FILESCOLLECTION).insertOne(document);
       return response.status(201).send({
         id: result.insertedId,
-        userId: user._id.toString(),
+        userId: user._id,
         name,
         type,
         isPublic: !!isPublic,
