@@ -18,22 +18,17 @@ export default class AuthController {
     const user = { email: extractUser[0], password: sha1(extractUser[1]) };
 
     const getUser = await dbClient.db.collection(USERSCOLLECTION).findOne(user);
-    if (!getUser) {
-      response.status(401).send({ error: UNAUTHORIZED });
-    } else {
-      const token = uuidv4();
-      await redisClient.set(`auth_${token}`, getUser._id.toString(), 24 * 60 * 60);
-      response.status(200).send({ token });
-    }
+    if (!getUser) return response.status(401).send({ error: UNAUTHORIZED });
+    const token = uuidv4();
+    await redisClient.set(`auth_${token}`, getUser._id.toString(), 24 * 60 * 60);
+    return response.status(200).send({ token });
   }
 
   static async getDisconnect(request, response) {
     const xToken = request.headers[TOKEN];
     const userId = await redisClient.get(`auth_${xToken}`);
-    if (!userId) response.status(401).send({ error: UNAUTHORIZED });
-    else {
-      await redisClient.del(`auth_${xToken}`);
-      response.status(204).send();
-    }
+    if (!userId) return response.status(401).send({ error: UNAUTHORIZED });
+    await redisClient.del(`auth_${xToken}`);
+    return response.status(204).send();
   }
 }
