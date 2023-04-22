@@ -78,14 +78,14 @@ export default class FilesController {
         parentId: parentId || 0,
       });
     }
-    let localPath = process.env.FOLDER_PATH || '/tmp/files_manager/';
+    let localPath = process.env.FOLDER_PATH || '/tmp/files_manager';
     const filename = uuidv4();
     const clearData = Buffer.from(data, 'base64');
     try {
       if (!fs.existsSync(localPath)) {
-        fs.mkdirSync(localPath);
+        fs.mkdirSync(localPath, { recursive: true });
       }
-      localPath += filename;
+      localPath = `${localPath}/${filename}`;
       fs.writeFile(localPath, clearData, (error) => {
         if (error) console.log(error);
       });
