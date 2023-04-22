@@ -165,18 +165,22 @@ export default class FilesController {
       },
       { $skip: skip },
       { $limit: limit },
-    ]).toArray();
+    ]);
 
-    const resultList = filesList.map((file) => ({
-      id: file._id,
-      userId: file.userId,
-      name: file.name,
-      type: file.type,
-      isPublic: file.isPublic,
-      parentId: file.parentId,
-    }));
+    const filesArray = [];
+    await filesList.forEach((item) => {
+      const fileItem = {
+        id: item._id,
+        userId: item.userId,
+        name: item.name,
+        type: item.type,
+        isPublic: item.isPublic,
+        parentId: item.parentId,
+      };
+      filesArray.push(fileItem);
+    });
 
-    return response.status(200).send(resultList);
+    return response.status(200).send(filesArray);
   }
 
   static async putPublish(request, response) {
