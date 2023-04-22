@@ -65,7 +65,7 @@ export default class FilesController {
         userId: user._id,
         name,
         type,
-        isPublic: !!isPublic,
+        isPublic: isPublic || false,
         parentId: parentId || 0,
       };
       const result = await dbClient.db.collection(FILESCOLLECTION).insertOne(document);
@@ -74,7 +74,7 @@ export default class FilesController {
         userId: user._id,
         name,
         type,
-        isPublic: !!isPublic,
+        isPublic: isPublic || false,
         parentId: parentId || 0,
       });
     }
