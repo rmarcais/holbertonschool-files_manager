@@ -150,11 +150,10 @@ export default class FilesController {
     const page = request.query.page || 0;
     let match;
 
-    if (parentId === 0) match = { userId: user._id.toString() };
+    if (parentId === 0) match = {};
     else {
       match = {
         parentId: parentId === '0' ? Number(parentId) : parentId,
-        userId: user._id.toString(),
       };
     }
 
