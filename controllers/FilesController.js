@@ -62,7 +62,7 @@ export default class FilesController {
     }
     if (type === FOLDER) {
       const document = {
-        userId: user._id,
+        userId: user._id.toString(),
         name,
         type,
         isPublic: !!isPublic,
@@ -71,7 +71,7 @@ export default class FilesController {
       const result = await dbClient.db.collection(FILESCOLLECTION).insertOne(document);
       return response.status(201).send({
         id: result.insertedId,
-        userId: user._id,
+        userId: user._id.toString(),
         name,
         type,
         isPublic: !!isPublic,
