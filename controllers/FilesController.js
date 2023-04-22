@@ -52,7 +52,7 @@ export default class FilesController {
     if (!data && type !== FOLDER) return response.status(400).send({ error: MISSINGDATA });
     if (parentId) {
       const query = { _id: ObjectId(parentId) };
-      const parent = !await dbClient.db.collection(FILESCOLLECTION).findOne(query);
+      const parent = await dbClient.db.collection(FILESCOLLECTION).findOne(query);
       if (!parent) {
         return response.status(400).send({ error: PARENTNOTFOUND });
       }
@@ -62,7 +62,7 @@ export default class FilesController {
     }
     if (type === FOLDER) {
       const document = {
-        userId: user._id.toString(),
+        userId: user._id,
         name,
         type,
         isPublic: !!isPublic,
@@ -71,7 +71,7 @@ export default class FilesController {
       const result = await dbClient.db.collection(FILESCOLLECTION).insertOne(document);
       return response.status(201).send({
         id: result.insertedId,
-        userId: user._id.toString(),
+        userId: user._id,
         name,
         type,
         isPublic: !!isPublic,
