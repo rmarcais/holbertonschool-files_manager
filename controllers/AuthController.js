@@ -16,9 +16,10 @@ export default class AuthController {
 
     const extractAuth = auth.split('Basic ')[1];
     const decodeAuth = Buffer.from(extractAuth, 'base64').toString('utf-8');
-    const extractUser = decodeAuth.split(':');
-    const user = { email: extractUser[0], password: sha1(extractUser[1]) };
+    const [email, password] = decodeAuth.split(':');
+    if (!email || !password) return response.status(401).send({ error: UNAUTHORIZED });
 
+    const user = { email, password: sha1(password) };
     const getUser = await dbClient.db.collection(USERSCOLLECTION).findOne(user);
     if (!getUser) return response.status(401).send({ error: UNAUTHORIZED });
     const token = uuidv4();
