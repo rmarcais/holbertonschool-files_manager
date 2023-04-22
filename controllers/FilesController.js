@@ -65,53 +65,11 @@ export default class FilesController {
         name,
         type,
         isPublic: !!isPublic,
-        parentId: 0,
-      };
-      const result = await dbClient.db.collection(FILESCOLLECTION).insertOne(document);
-      response.status(201).send({
-        id: result.insertedId,
-        userId: user._id.toString(),
-        name,
-        type,
-        isPublic: !!isPublic,
-        parentId: 0,
-      });
-    } else {
-      let localPath = process.env.FOLDER_PATH || '/tmp/files_manager/';
-      const filename = uuidv4();
-      const clearData = Buffer.from(data, 'base64');
-      try {
-        if (!fs.existsSync(localPath)) {
-          fs.mkdirSync(localPath);
-        }
-        localPath += filename;
-        fs.writeFile(localPath, clearData, (error) => {
-          if (error) console.log(error);
-        });
-      } catch (error) {
-        console.log(error);
-      }
-
-      const document = {
-        userId: user._id.toString(),
-        name,
-        type,
-        isPublic: !!isPublic,
         parentId: parentId || 0,
-        localPath,
       };
       const result = await dbClient.db.collection(FILESCOLLECTION).insertOne(document);
-      const fileId = result.insertedId;
-
-      if (type === 'image') {
-        await fileQueue.add({
-          userId: user._id.toString(),
-          fileId,
-        });
-      }
-
-      response.status(201).send({
-        id: fileId,
+      return response.status(201).send({
+        id: result.insertedId,
         userId: user._id.toString(),
         name,
         type,
@@ -119,8 +77,44 @@ export default class FilesController {
         parentId: parentId || 0,
       });
     }
-
-    return response.send();
+    let localPath = process.env.FOLDER_PATH || '/tmp/files_manager/';
+    const filename = uuidv4();
+    const clearData = Buffer.from(data, 'base64');
+    try {
+      if (!fs.existsSync(localPath)) {
+        fs.mkdirSync(localPath);
+      }
+      localPath += filename;
+      fs.writeFile(localPath, clearData, (error) => {
+        if (error) console.log(error);
+      });
+    } catch (error) {
+      console.log(error);
+    }
+    const document = {
+      userId: user._id.toString(),
+      name,
+      type,
+      isPublic: !!isPublic,
+      parentId: parentId || 0,
+      localPath,
+    };
+    const result = await dbClient.db.collection(FILESCOLLECTION).insertOne(document);
+    const fileId = result.insertedId;
+    if (type === 'image') {
+      await fileQueue.add({
+        userId: user._id.toString(),
+        fileId,
+      });
+    }
+    return response.status(201).send({
+      id: fileId,
+      userId: user._id.toString(),
+      name,
+      type,
+      isPublic: !!isPublic,
+      parentId: parentId || 0,
+    });
   }
 
   static async getShow(request, response) {
