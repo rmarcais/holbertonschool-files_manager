@@ -154,7 +154,7 @@ export default class FilesController {
     if (parentId === 0) match = {};
     else {
       match = {
-        parentId: parentId === '0' ? Number(parentId) : parentId,
+        parentId: parentId === '0' ? Number(parentId) : ObjectId(parentId),
       };
     }
 
