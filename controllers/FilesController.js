@@ -41,8 +41,9 @@ export default class FilesController {
     if (!user) return response.status(401).send({ error: UNAUTHORIZED });
 
     const {
-      name, type, parentId, isPublic, data,
+      name, type, isPublic, data,
     } = request.body;
+    const parentId = request.body.parentId || 0;
     const validTypes = [FOLDER, FILE, IMAGE];
 
     if (!name) return response.status(400).send({ error: MISSINGNAME });
@@ -66,7 +67,7 @@ export default class FilesController {
         name,
         type,
         isPublic: isPublic || false,
-        parentId: parentId || 0,
+        parentId: parentId === 0 ? parentId : ObjectId(parentId),
       };
       const result = await dbClient.db.collection(FILESCOLLECTION).insertOne(document);
       return response.status(201).send({
@@ -75,7 +76,7 @@ export default class FilesController {
         name,
         type,
         isPublic: isPublic || false,
-        parentId: parentId || 0,
+        parentId,
       });
     }
     let localPath = process.env.FOLDER_PATH || '/tmp/files_manager';
@@ -93,11 +94,11 @@ export default class FilesController {
       console.log(error);
     }
     const document = {
-      userId: user._id.toString(),
+      userId: user._id,
       name,
       type,
       isPublic: !!isPublic,
-      parentId: parentId || 0,
+      parentId: parentId === 0 ? parentId : ObjectId(parentId),
       localPath,
     };
     const result = await dbClient.db.collection(FILESCOLLECTION).insertOne(document);
@@ -110,35 +111,34 @@ export default class FilesController {
     }
     return response.status(201).send({
       id: fileId,
-      userId: user._id.toString(),
+      userId: user._id,
       name,
       type,
       isPublic: !!isPublic,
-      parentId: parentId || 0,
+      parentId,
     });
   }
 
   static async getShow(request, response) {
-    const token = request.headers['x-token'];
-    if (!token) { return response.status(401).json({ error: 'Unauthorized' }); }
-    const keyID = await redisClient.get(`auth_${token}`);
-    if (!keyID) { return response.status(401).json({ error: 'Unauthorized' }); }
-    const user = await dbClient.db.collection('users').findOne({ _id: ObjectId(keyID) });
-    if (!user) { return response.status(401).json({ error: 'Unauthorized' }); }
+    const xToken = request.headers[TOKEN];
+    const user = await getUser(xToken);
+    if (!user) return response.status(401).send({ error: UNAUTHORIZED });
 
-    const idFile = request.params.id || '';
-    const fileDocument = await dbClient.db
-      .collection('files')
-      .findOne({ _id: ObjectId(idFile), userId: user._id });
-    if (!fileDocument) return response.status(404).send({ error: 'Not found' });
+    const fileId = request.params.id;
+    if (!fileId) return response.status(404).send({ error: NOTFOUND });
 
-    return response.send({
-      id: fileDocument._id,
-      userId: fileDocument.userId,
-      name: fileDocument.name,
-      type: fileDocument.type,
-      isPublic: fileDocument.isPublic,
-      parentId: fileDocument.parentId,
+    const query = { _id: ObjectId(fileId), userId: user._id };
+    const file = await dbClient.db.collection(FILESCOLLECTION).findOne(query);
+
+    if (!file) return response.status(404).send({ error: NOTFOUND });
+
+    return response.status(200).send({
+      id: file._id,
+      userId: file.userId,
+      name: file.name,
+      type: file.type,
+      isPublic: file.isPublic,
+      parentId: file.parentId,
     });
   }
 
@@ -186,7 +186,8 @@ export default class FilesController {
     if (!user) return response.status(401).send({ error: UNAUTHORIZED });
 
     const fileId = request.params.id || '';
-    const query = { _id: ObjectId(fileId), userId: user._id.toString() };
+    if (fileId === '') return response.status(404).send({ error: NOTFOUND });
+    const query = { _id: ObjectId(fileId), userId: user._id };
     const file = await dbClient.db.collection(FILESCOLLECTION).findOne(query);
 
     if (!file) return response.status(404).send({ error: NOTFOUND });
@@ -197,8 +198,8 @@ export default class FilesController {
     });
 
     return response.status(200).send({
-      id: file._id.toString(),
-      userId: user._id.toString(),
+      id: file._id,
+      userId: user._id,
       name: file.name,
       type: file.type,
       isPublic: true,
@@ -212,7 +213,8 @@ export default class FilesController {
     if (!user) return response.status(401).send({ error: UNAUTHORIZED });
 
     const fileId = request.params.id || '';
-    const query = { _id: ObjectId(fileId), userId: user._id.toString() };
+    if (fileId === '') return response.status(404).send({ error: NOTFOUND });
+    const query = { _id: ObjectId(fileId), userId: user._id };
     const file = await dbClient.db.collection(FILESCOLLECTION).findOne(query);
 
     if (!file) return response.status(404).send({ error: NOTFOUND });
@@ -223,8 +225,8 @@ export default class FilesController {
     });
 
     return response.status(200).send({
-      id: file._id.toString(),
-      userId: user._id.toString(),
+      id: file._id,
+      userId: user._id,
       name: file.name,
       type: file.type,
       isPublic: false,
@@ -233,34 +235,35 @@ export default class FilesController {
   }
 
   static async getFile(request, response) {
-    const fileId = request.params.id;
-    const query = { _id: ObjectId(fileId) };
-    const file = await dbClient.db.collection(FILESCOLLECTION).findOne(query);
+    const fileId = request.params.id || '';
+    if (fileId === '') return response.status(404).send({ error: NOTFOUND });
 
+    const size = request.query.size || 0;
+
+    const query = { _id: ObjectId(fileId) };
+
+    const file = await dbClient.db.collection(FILESCOLLECTION).findOne(query);
     if (!file) return response.status(404).send({ error: NOTFOUND });
+
+    const path = size === 0 ? file.localPath : `${file.localPath}_${size}`;
 
     if (!file.isPublic) {
       const xToken = request.headers[TOKEN];
       const user = await getUser(xToken);
-      if (!user || user._id.toString() !== file.userId) {
+      if (!user || user._id.toString() !== file.userId.toString()) {
         return response.status(404).send({ error: NOTFOUND });
       }
     }
 
     if (file.type === FOLDER) return response.status(400).send({ error: FOLDERNOCONTENT });
 
-    if (!fs.existsSync(file.localPath)) return response.status(404).send({ error: NOTFOUND });
-
-    const { size } = request.query;
-    let path = file.localPath;
-    if (size) {
-      path += `_${size}`;
-      if (!fs.existsSync(path)) return response.status(404).send({ error: NOTFOUND });
+    try {
+      const mimeType = mime.lookup(file.name);
+      response.setHeader('Content-Type', mimeType);
+      const data = fs.readFileSync(path);
+      return response.status(200).send(data);
+    } catch (error) {
+      return response.status(404).send({ error: NOTFOUND });
     }
-
-    const mimeType = mime.lookup(file.name);
-    response.setHeader('Content-Type', mimeType);
-    const data = fs.readFileSync(path);
-    return response.status(200).send(data);
   }
 }
