@@ -123,8 +123,7 @@ export default class FilesController {
     const user = await getUser(xToken);
     if (!user) return response.status(401).send({ error: UNAUTHORIZED });
 
-    const fileId = request.params.id;
-    if (!fileId) return response.status(404).send({ error: NOTFOUND });
+    const fileId = request.params.id || '';
 
     const query = { _id: ObjectId(fileId), userId: user._id.toString() };
     const file = await dbClient.db.collection(FILESCOLLECTION).findOne(query);
