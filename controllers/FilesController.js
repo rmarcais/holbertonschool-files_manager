@@ -93,7 +93,7 @@ export default class FilesController {
       console.log(error);
     }
     const document = {
-      userId: user._id.toString(),
+      userId: user._id,
       name,
       type,
       isPublic: !!isPublic,
@@ -110,7 +110,7 @@ export default class FilesController {
     }
     return response.status(201).send({
       id: fileId,
-      userId: user._id.toString(),
+      userId: user._id,
       name,
       type,
       isPublic: !!isPublic,
@@ -119,26 +119,24 @@ export default class FilesController {
   }
 
   static async getShow(request, response) {
-    const token = request.headers['x-token'];
-    if (!token) { return response.status(401).json({ error: 'Unauthorized' }); }
-    const keyID = await redisClient.get(`auth_${token}`);
-    if (!keyID) { return response.status(401).json({ error: 'Unauthorized' }); }
-    const user = await dbClient.db.collection('users').findOne({ _id: ObjectId(keyID) });
-    if (!user) { return response.status(401).json({ error: 'Unauthorized' }); }
+    const xToken = request.headers[TOKEN];
+    const user = await getUser(xToken);
+    if (!user) return response.status(401).send({ error: UNAUTHORIZED });
 
-    const idFile = request.params.id || '';
-    const fileDocument = await dbClient.db
-      .collection('files')
-      .findOne({ _id: ObjectId(idFile), userId: user._id.toString() });
-    if (!fileDocument) return response.status(404).send({ error: 'Not found' });
+    const fileId = request.params.id || '';
 
-    return response.send({
-      id: fileDocument._id,
-      userId: fileDocument.userId,
-      name: fileDocument.name,
-      type: fileDocument.type,
-      isPublic: fileDocument.isPublic,
-      parentId: fileDocument.parentId,
+    const query = { _id: ObjectId(fileId), userId: user._id };
+    const file = await dbClient.db.collection(FILESCOLLECTION).findOne(query);
+
+    if (!file) return response.status(404).send({ error: NOTFOUND });
+
+    return response.status(200).send({
+      id: file._id,
+      userId: file.userId,
+      name: file.name,
+      type: file.type,
+      isPublic: file.isPublic,
+      parentId: file.parentId,
     });
   }
 
