@@ -133,7 +133,7 @@ export default class FilesController {
 
     return response.status(200).send({
       id: file._id,
-      userId: file.userId,
+      userId: user._id,
       name: file.name,
       type: file.type,
       isPublic: file.isPublic,
