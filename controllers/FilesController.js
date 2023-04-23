@@ -105,7 +105,7 @@ export default class FilesController {
     const fileId = result.insertedId;
     if (type === 'image') {
       await fileQueue.add({
-        userId: user._id.toString(),
+        userId: user._id,
         fileId,
       });
     }

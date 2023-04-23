@@ -12,7 +12,7 @@ fileQueue.process(async (job) => {
   if (!fileId) throw Error('Missing fileId');
   if (!userId) throw Error('Missing userId');
 
-  const file = await dbClient.db.collection('files').findOne({ _id: ObjectId(fileId), userId });
+  const file = await dbClient.db.collection('files').findOne({ _id: ObjectId(fileId), userId: ObjectId(userId) });
   if (!file) throw Error('File not found');
 
   const path = file.localPath;
