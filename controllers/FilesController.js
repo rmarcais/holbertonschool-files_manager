@@ -234,7 +234,8 @@ export default class FilesController {
   }
 
   static async getFile(request, response) {
-    const fileId = request.params.id;
+    const fileId = request.params.id || '';
+    if (fileId === '') return response.status(404).send({ error: NOTFOUND });
     const query = { _id: ObjectId(fileId) };
     const file = await dbClient.db.collection(FILESCOLLECTION).findOne(query);
 
