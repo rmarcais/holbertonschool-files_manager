@@ -124,7 +124,8 @@ export default class FilesController {
     const user = await getUser(xToken);
     if (!user) return response.status(401).send({ error: UNAUTHORIZED });
 
-    const fileId = request.params.id || '';
+    const fileId = request.params.id;
+    if (!fileId) return response.status(404).send({ error: NOTFOUND });
 
     const query = { _id: ObjectId(fileId), userId: user._id };
     const file = await dbClient.db.collection(FILESCOLLECTION).findOne(query);
@@ -165,22 +166,18 @@ export default class FilesController {
       },
       { $skip: skip },
       { $limit: limit },
-    ]);
+    ]).toArray();
 
-    const filesArray = [];
-    await filesList.forEach((item) => {
-      const fileItem = {
-        id: item._id,
-        userId: item.userId,
-        name: item.name,
-        type: item.type,
-        isPublic: item.isPublic,
-        parentId: item.parentId,
-      };
-      filesArray.push(fileItem);
-    });
+    const resultList = filesList.map((file) => ({
+      id: file._id,
+      userId: file.userId,
+      name: file.name,
+      type: file.type,
+      isPublic: file.isPublic,
+      parentId: file.parentId,
+    }));
 
-    return response.status(200).send(filesArray);
+    return response.status(200).send(resultList);
   }
 
   static async putPublish(request, response) {
