@@ -124,6 +124,7 @@ export default class FilesController {
     if (!user) return response.status(401).send({ error: UNAUTHORIZED });
 
     const fileId = request.params.id || '';
+    if (fileId === '') return response.status(404).send({ error: NOTFOUND });
 
     const query = { _id: ObjectId(fileId), userId: user._id };
     const file = await dbClient.db.collection(FILESCOLLECTION).findOne(query);
@@ -184,7 +185,8 @@ export default class FilesController {
     if (!user) return response.status(401).send({ error: UNAUTHORIZED });
 
     const fileId = request.params.id || '';
-    const query = { _id: ObjectId(fileId), userId: user._id.toString() };
+    if (fileId === '') return response.status(404).send({ error: NOTFOUND });
+    const query = { _id: ObjectId(fileId), userId: user._id };
     const file = await dbClient.db.collection(FILESCOLLECTION).findOne(query);
 
     if (!file) return response.status(404).send({ error: NOTFOUND });
@@ -195,8 +197,8 @@ export default class FilesController {
     });
 
     return response.status(200).send({
-      id: file._id.toString(),
-      userId: user._id.toString(),
+      id: file._id,
+      userId: user._id,
       name: file.name,
       type: file.type,
       isPublic: true,
@@ -210,7 +212,8 @@ export default class FilesController {
     if (!user) return response.status(401).send({ error: UNAUTHORIZED });
 
     const fileId = request.params.id || '';
-    const query = { _id: ObjectId(fileId), userId: user._id.toString() };
+    if (fileId === '') return response.status(404).send({ error: NOTFOUND });
+    const query = { _id: ObjectId(fileId), userId: user._id };
     const file = await dbClient.db.collection(FILESCOLLECTION).findOne(query);
 
     if (!file) return response.status(404).send({ error: NOTFOUND });
@@ -221,8 +224,8 @@ export default class FilesController {
     });
 
     return response.status(200).send({
-      id: file._id.toString(),
-      userId: user._id.toString(),
+      id: file._id,
+      userId: user._id,
       name: file.name,
       type: file.type,
       isPublic: false,
