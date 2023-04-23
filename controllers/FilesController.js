@@ -41,8 +41,9 @@ export default class FilesController {
     if (!user) return response.status(401).send({ error: UNAUTHORIZED });
 
     const {
-      name, type, parentId, isPublic, data,
+      name, type, isPublic, data,
     } = request.body;
+    const parentId = request.body.parentId || 0;
     const validTypes = [FOLDER, FILE, IMAGE];
 
     if (!name) return response.status(400).send({ error: MISSINGNAME });
@@ -66,7 +67,7 @@ export default class FilesController {
         name,
         type,
         isPublic: isPublic || false,
-        parentId: parentId || 0,
+        parentId: parentId === 0 ? parentId : ObjectId(parentId),
       };
       const result = await dbClient.db.collection(FILESCOLLECTION).insertOne(document);
       return response.status(201).send({
@@ -75,7 +76,7 @@ export default class FilesController {
         name,
         type,
         isPublic: isPublic || false,
-        parentId: parentId || 0,
+        parentId,
       });
     }
     let localPath = process.env.FOLDER_PATH || '/tmp/files_manager';
@@ -97,7 +98,7 @@ export default class FilesController {
       name,
       type,
       isPublic: !!isPublic,
-      parentId: parentId || 0,
+      parentId: parentId === 0 ? parentId : ObjectId(parentId),
       localPath,
     };
     const result = await dbClient.db.collection(FILESCOLLECTION).insertOne(document);
@@ -114,31 +115,29 @@ export default class FilesController {
       name,
       type,
       isPublic: !!isPublic,
-      parentId: parentId || 0,
+      parentId,
     });
   }
 
   static async getShow(request, response) {
-    const token = request.headers['x-token'];
-    if (!token) { return response.status(401).json({ error: 'Unauthorized' }); }
-    const keyID = await redisClient.get(`auth_${token}`);
-    if (!keyID) { return response.status(401).json({ error: 'Unauthorized' }); }
-    const user = await dbClient.db.collection('users').findOne({ _id: ObjectId(keyID) });
-    if (!user) { return response.status(401).json({ error: 'Unauthorized' }); }
+    const xToken = request.headers[TOKEN];
+    const user = await getUser(xToken);
+    if (!user) return response.status(401).send({ error: UNAUTHORIZED });
 
-    const idFile = request.params.id || '';
-    const fileDocument = await dbClient.db
-      .collection('files')
-      .findOne({ _id: ObjectId(idFile), userId: user._id });
-    if (!fileDocument) return response.status(404).send({ error: 'Not found' });
+    const fileId = request.params.id || '';
 
-    return response.send({
-      id: fileDocument._id,
-      userId: fileDocument.userId,
-      name: fileDocument.name,
-      type: fileDocument.type,
-      isPublic: fileDocument.isPublic,
-      parentId: fileDocument.parentId,
+    const query = { _id: ObjectId(fileId), userId: user._id };
+    const file = await dbClient.db.collection(FILESCOLLECTION).findOne(query);
+
+    if (!file) return response.status(404).send({ error: NOTFOUND });
+
+    return response.status(200).send({
+      id: file._id,
+      userId: file.userId,
+      name: file.name,
+      type: file.type,
+      isPublic: file.isPublic,
+      parentId: file.parentId,
     });
   }
 
