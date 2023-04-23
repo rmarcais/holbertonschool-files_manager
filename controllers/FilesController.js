@@ -244,7 +244,7 @@ export default class FilesController {
     if (!file.isPublic) {
       const xToken = request.headers[TOKEN];
       const user = await getUser(xToken);
-      if (!user || user._id.toString() !== file.userId) {
+      if (!user || user._id !== file.userId) {
         return response.status(404).send({ error: NOTFOUND });
       }
     }
