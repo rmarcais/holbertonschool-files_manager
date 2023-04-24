@@ -1,4 +1,5 @@
 import sha1 from 'sha1';
+import Bull from 'bull';
 import { ObjectId } from 'mongodb';
 import dbClient from '../utils/db';
 import redisClient from '../utils/redis';
@@ -13,12 +14,17 @@ const TOKEN = 'x-token';
 
 export default class UserController {
   static async postNew(request, response) {
+    const userQueue = new Bull('userQueue');
+
     const { email, password } = request.body;
     if (!email) return response.status(400).send({ error: MISSINGEMAIL });
     if (!password) return response.status(400).send({ error: MISSINGPASSWORD });
     if (await dbClient.db.collection(USERSCOLLECTION).findOne({ email })) return response.status(400).send({ error: 'Already exist' });
     const user = { email, password: sha1(password) };
     const result = await dbClient.db.collection(USERSCOLLECTION).insertOne(user);
+    await userQueue.add({
+      userId: result.insertedId,
+    });
     return response.status(201).send({ id: result.insertedId, email });
   }
 
